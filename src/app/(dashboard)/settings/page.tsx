@@ -19,6 +19,19 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchSettings();
+
+    // Handle OAuth callback messages
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("success") === "linkedin_connected") {
+        toast.success("Successfully connected to LinkedIn!");
+        // Remove param from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (params.get("error")) {
+        toast.error(`LinkedIn Connection Failed: ${params.get("error")}`);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
   }, []);
 
   const fetchSettings = async () => {
@@ -116,13 +129,31 @@ export default function SettingsPage() {
               <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Lock className="h-4 w-4 text-gray-400" /> Access Token
               </label>
-              <input 
-                type="password" 
-                placeholder="AQX..."
-                className="w-full max-w-2xl rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={liAccessToken}
-                onChange={(e) => setLiAccessToken(e.target.value)}
-              />
+              <div className="flex gap-3">
+                <input 
+                  type="password" 
+                  placeholder={liAccessToken ? "••••••••••••••••" : "Not connected yet"}
+                  className="w-full max-w-2xl rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
+                  disabled
+                  value={liAccessToken ? "hidden_token" : ""}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!liClientId || !liClientSecret) {
+                      toast.error("Please save your Client ID and Client Secret first.");
+                      return;
+                    }
+                    window.location.href = "/api/auth/linkedin";
+                  }}
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 flex-shrink-0"
+                >
+                  {liAccessToken ? "Reconnect" : "Connect LinkedIn"}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Save your Client ID and Client Secret below, then click Connect.
+              </p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">

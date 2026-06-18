@@ -119,6 +119,8 @@ model ApiSettings {
   linkedin_client_id    String?
   linkedin_client_secret String?
   linkedin_organization_id String?
+  linkedin_refresh_token String? @db.Text
+  linkedin_token_expires_at DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
