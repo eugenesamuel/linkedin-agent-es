@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Key, Lock, Save, Sparkles, Linkedin } from "lucide-react";
+import { Key, Lock, Save, Sparkles, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -107,7 +107,7 @@ export default function SettingsPage() {
         <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
           <div className="p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
             <h2 className="font-semibold text-lg flex items-center gap-2 text-blue-900">
-              <Linkedin className="h-5 w-5" /> LinkedIn API
+              <LinkIcon className="h-5 w-5" /> LinkedIn API
             </h2>
             <p className="text-sm text-blue-700 mt-1">Used to natively publish generated content to your profile or page.</p>
           </div>
