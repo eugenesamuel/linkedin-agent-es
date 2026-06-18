@@ -30,7 +30,7 @@ export class ContentWriterAgent {
         topic_title: params.topicTitle,
         post_text: content.post_text,
         hook: content.hook,
-        hashtags: content.hashtags,
+        hashtags: Array.isArray(content.hashtags) ? content.hashtags.join(" ") : content.hashtags,
         CTA: content.CTA,
         status: "DRAFT"
       }
