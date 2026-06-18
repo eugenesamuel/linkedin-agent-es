@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const doc = await db.collection('content_drafts').doc(id).get();
-    if (!doc.exists) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    return NextResponse.json({ draft: doc.data() });
+    const draft = await prisma.contentDraft.findUnique({ where: { id } });
+    if (!draft) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ draft });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -16,13 +16,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const { id } = await params;
     const body = await req.json();
-    await db.collection('content_drafts').doc(id).update({
-      ...body,
-      updatedAt: new Date().toISOString()
+    const draft = await prisma.contentDraft.update({
+      where: { id },
+      data: body
     });
     
-    const doc = await db.collection('content_drafts').doc(id).get();
-    return NextResponse.json({ draft: doc.data() });
+    return NextResponse.json({ draft });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -1,4 +1,4 @@
-import { db } from "../firebase";
+import { prisma } from "../prisma";
 
 export class SchedulerAgent {
   static suggestBestTime() {
@@ -9,13 +9,14 @@ export class SchedulerAgent {
   }
 
   static async scheduleDraft(draftId: string, scheduledDate: Date) {
-    await db.collection('content_drafts').doc(draftId).update({
-      status: "SCHEDULED",
-      scheduled_at: scheduledDate.toISOString(),
-      updatedAt: new Date().toISOString()
+    const draft = await prisma.contentDraft.update({
+      where: { id: draftId },
+      data: {
+        status: "SCHEDULED",
+        scheduled_at: scheduledDate
+      }
     });
     
-    const draftDoc = await db.collection('content_drafts').doc(draftId).get();
-    return draftDoc.data();
+    return draft;
   }
 }

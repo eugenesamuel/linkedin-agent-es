@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
+import { prisma } from '@/lib/prisma';
 import { TrendResearchAgent } from '@/lib/agents/TrendResearchAgent';
 import { ContentWriterAgent } from '@/lib/agents/ContentWriterAgent';
 import { BannerCreativeAgent } from '@/lib/agents/BannerCreativeAgent';
 import { ComplianceReviewAgent } from '@/lib/agents/ComplianceReviewAgent';
 import { PublisherAgent } from '@/lib/agents/PublisherAgent';
 
-// This endpoint is meant to be hit by a Cron Job (e.g. Vercel Cron or Firebase Cloud Scheduler)
-// To protect it, we expect a CRON_SECRET authorization header.
+// This endpoint is meant to be hit by Vercel Cron
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -18,21 +17,26 @@ export async function GET(req: Request) {
     console.log("[Auto-Post Cron] Starting automation cycle...");
 
     // 1. Get the brand profile and verify it allows auto-posting
-    const profileSnapshot = await db.collection('brand_profiles').limit(1).get();
-    if (profileSnapshot.empty) {
+    const brandProfile = await prisma.brandProfile.findFirst();
+    if (!brandProfile) {
       throw new Error("No brand profile found. Automation aborted.");
     }
-    const brandProfile = profileSnapshot.docs[0].data();
     
     if (brandProfile.approval_required) {
       console.log("[Auto-Post Cron] Human approval is required. Stopping automation.");
       return NextResponse.json({ message: "Approval required. No auto-publish." });
     }
 
-    // Assume we use a generic system user ID since we no longer query Prisma Users
-    const systemUserId = "system_cron_bot";
+    // Assume we use a generic system user ID since this runs unattended
+    // In a real app we'd fetch the first admin user or use a dedicated system UUID
+    let systemUser = await prisma.user.findFirst({ where: { role: "admin" } });
+    if (!systemUser) {
+      systemUser = await prisma.user.create({
+        data: { email: "cron@system.local", name: "System Bot", role: "admin" }
+      });
+    }
 
-    // 2. Fetch the latest trending topics (limit 1 for the daily post)
+    // 2. Fetch the latest trending topics
     console.log("[Auto-Post Cron] Researching topics...");
     const topics = await TrendResearchAgent.researchAndStoreTopics({
       industry: brandProfile.industry,
@@ -49,7 +53,7 @@ export async function GET(req: Request) {
     // 3. Generate Content Draft
     console.log("[Auto-Post Cron] Generating content for topic:", selectedTopic.title);
     const draft = await ContentWriterAgent.createDraft({
-      userId: systemUserId,
+      userId: systemUser.id,
       topicId: selectedTopic.id,
       topicTitle: selectedTopic.title,
       audience: brandProfile.target_audience,
@@ -65,20 +69,21 @@ export async function GET(req: Request) {
 
     // 5. Compliance Review
     console.log("[Auto-Post Cron] Running compliance check...");
-    const review = await ComplianceReviewAgent.reviewDraft(draft.id, draft.post_text || "", brandProfile);
+    const updatedDraft = await prisma.contentDraft.findUnique({ where: { id: draft.id } });
+    const review = await ComplianceReviewAgent.reviewDraft(draft.id, updatedDraft?.post_text || "", brandProfile);
 
-    // 6. Auto-Publish if Compliance Score is high enough (e.g. >= 80)
+    // 6. Auto-Publish if Compliance Score is high enough
     if (review.score >= 80) {
       console.log("[Auto-Post Cron] Compliance passed. Auto-approving and publishing...");
       
       // Auto-approve the draft
-      await db.collection('content_drafts').doc(draft.id).update({
-        status: "APPROVED",
-        updatedAt: new Date().toISOString()
+      await prisma.contentDraft.update({
+        where: { id: draft.id },
+        data: { status: "APPROVED" }
       });
 
       // Publish immediately
-      const publishedDraft = await PublisherAgent.publishDraft(draft.id, systemUserId, "company_page");
+      await PublisherAgent.publishDraft(draft.id, systemUser.id, "company_page");
       
       console.log("[Auto-Post Cron] Successfully published!");
       return NextResponse.json({ 

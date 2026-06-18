@@ -1,5 +1,5 @@
 import { fetchLatestTrends } from "../api-clients/internalTrendApi";
-import { db } from "../firebase";
+import { prisma } from "../prisma";
 
 export class TrendResearchAgent {
   static async researchAndStoreTopics(params: { industry: string; audience: string; region: string; limit: number }) {
@@ -9,22 +9,19 @@ export class TrendResearchAgent {
     // 2. Score and filter
     const validTrends = rawTrends.filter(t => t.score > 60);
 
-    // 3. Store in Firestore database
+    // 3. Store in Prisma database
     const createdTopics = [];
     for (const t of validTrends) {
-      const topicRef = db.collection('topics').doc();
-      const topicData = {
-        id: topicRef.id,
-        title: t.title,
-        description: t.description,
-        score: t.score,
-        source: t.source,
-        reason: `High relevance score (${t.score}) for ${params.industry}`,
-        createdAt: new Date().toISOString()
-      };
-      
-      await topicRef.set(topicData);
-      createdTopics.push(topicData);
+      const topic = await prisma.topic.create({
+        data: {
+          title: t.title,
+          description: t.description,
+          score: t.score,
+          source: t.source,
+          reason: `High relevance score (${t.score}) for ${params.industry}`
+        }
+      });
+      createdTopics.push(topic);
     }
     
     return createdTopics;

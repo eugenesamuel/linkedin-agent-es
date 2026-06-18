@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // Return first brand profile if it exists
-    const snapshot = await db.collection('brand_profiles').limit(1).get();
-    if (snapshot.empty) {
-      return NextResponse.json({ profile: null });
-    }
-    return NextResponse.json({ profile: snapshot.docs[0].data() });
+    const profile = await prisma.brandProfile.findFirst();
+    return NextResponse.json({ profile });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -17,36 +13,31 @@ export async function GET() {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
-    const snapshot = await db.collection('brand_profiles').limit(1).get();
+    const existing = await prisma.brandProfile.findFirst();
     
-    let profileData = {
-      ...body,
-      updatedAt: new Date().toISOString()
-    };
-
-    if (!snapshot.empty) {
-      const docRef = snapshot.docs[0].ref;
-      await docRef.update(profileData);
-      profileData = { ...snapshot.docs[0].data(), ...profileData };
+    let profile;
+    if (existing) {
+      profile = await prisma.brandProfile.update({
+        where: { id: existing.id },
+        data: body
+      });
     } else {
-      const newRef = db.collection('brand_profiles').doc();
-      profileData = {
-        id: newRef.id,
-        brand_name: body.brand_name || "Default Brand",
-        industry: body.industry || "Technology",
-        target_audience: body.target_audience || "Professionals",
-        tone_of_voice: body.tone_of_voice || "Professional",
-        language: body.language || "English",
-        posting_frequency: body.posting_frequency || "Daily",
-        CTA_style: body.CTA_style || "Direct",
-        approval_required: true,
-        createdAt: new Date().toISOString(),
-        ...profileData
-      };
-      await newRef.set(profileData);
+      profile = await prisma.brandProfile.create({
+        data: {
+          brand_name: body.brand_name || "Default Brand",
+          industry: body.industry || "Technology",
+          target_audience: body.target_audience || "Professionals",
+          tone_of_voice: body.tone_of_voice || "Professional",
+          language: body.language || "English",
+          posting_frequency: body.posting_frequency || "Daily",
+          CTA_style: body.CTA_style || "Direct",
+          approval_required: true,
+          ...body
+        }
+      });
     }
     
-    return NextResponse.json({ profile: profileData });
+    return NextResponse.json({ profile });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

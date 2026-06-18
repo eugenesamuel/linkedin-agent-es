@@ -1,4 +1,4 @@
-import { db } from "../firebase";
+import { prisma } from "../prisma";
 
 export class ComplianceReviewAgent {
   static async reviewDraft(draftId: string, postText: string, brandProfile: any) {
@@ -25,11 +25,13 @@ export class ComplianceReviewAgent {
       notes.push("Passed all internal compliance checks cleanly.");
     }
 
-    // 3. Update Draft with compliance score in Firestore
-    await db.collection('content_drafts').doc(draftId).update({
-      compliance_score: score,
-      compliance_notes: notes.join(" | "),
-      updatedAt: new Date().toISOString()
+    // 3. Update Draft with compliance score
+    await prisma.contentDraft.update({
+      where: { id: draftId },
+      data: {
+        compliance_score: score,
+        compliance_notes: notes.join(" | ")
+      }
     });
 
     return { score, notes };

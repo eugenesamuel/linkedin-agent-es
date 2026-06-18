@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("POSTGRES_PRISMA_URL") // Uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING") // Uses a direct connection
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String?
+  role          String         @default("admin")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  drafts        ContentDraft[]
+  logs          AuditLog[]
+}
+
+model BrandProfile {
+  id                String   @id @default(uuid())
+  brand_name        String
+  industry          String
+  target_audience   String
+  tone_of_voice     String
+  language          String
+  posting_frequency String
+  CTA_style         String
+  approval_required Boolean  @default(true)
+  banned_words      String[] @default([])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Topic {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  score       Int
+  source      String
+  reason      String
+  createdAt   DateTime @default(now())
+  drafts      ContentDraft[]
+}
+
+model ContentDraft {
+  id               String   @id @default(uuid())
+  user_id          String
+  user             User     @relation(fields: [user_id], references: [id])
+  topic_id         String
+  topic            Topic    @relation(fields: [topic_id], references: [id])
+  topic_title      String
+  post_text        String?  @db.Text
+  hook             String?  @db.Text
+  hashtags         String?
+  CTA              String?
+  status           String   @default("DRAFT")
+  compliance_score Int?
+  compliance_notes String?  @db.Text
+  banner_asset_id  String?
+  banner_asset_url String?
+  scheduled_at     DateTime?
+  published_at     DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  publishedPost    PublishedPost?
+}
+
+model BannerAsset {
+  id        String   @id @default(uuid())
+  url       String
+  asset_id  String
+  prompt    String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+model PublishedPost {
+  id           String       @id @default(uuid())
+  draft_id     String       @unique
+  draft        ContentDraft @relation(fields: [draft_id], references: [id])
+  linkedin_id  String
+  published_at DateTime     @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id])
+  action    String
+  entity_id String
+  details   Json
+  createdAt DateTime @default(now())
+}

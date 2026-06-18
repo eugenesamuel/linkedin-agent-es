@@ -1,5 +1,5 @@
 import { generateContent } from "../api-clients/internalContentApi";
-import { db } from "../firebase";
+import { prisma } from "../prisma";
 
 export class ContentWriterAgent {
   static async createDraft(params: {
@@ -22,23 +22,20 @@ export class ContentWriterAgent {
       brand_profile: params.brandProfile
     });
 
-    // 2. Store as a new ContentDraft in Firestore
-    const draftRef = db.collection('content_drafts').doc();
-    const draftData = {
-      id: draftRef.id,
-      user_id: params.userId,
-      topic_id: params.topicId,
-      topic_title: params.topicTitle,
-      post_text: content.post_text,
-      hook: content.hook,
-      hashtags: content.hashtags,
-      CTA: content.CTA,
-      status: "DRAFT",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    // 2. Store as a new ContentDraft in Prisma
+    const draft = await prisma.contentDraft.create({
+      data: {
+        user_id: params.userId,
+        topic_id: params.topicId,
+        topic_title: params.topicTitle,
+        post_text: content.post_text,
+        hook: content.hook,
+        hashtags: content.hashtags,
+        CTA: content.CTA,
+        status: "DRAFT"
+      }
+    });
 
-    await draftRef.set(draftData);
-    return draftData;
+    return draft;
   }
 }
