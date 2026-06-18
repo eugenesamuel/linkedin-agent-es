@@ -18,6 +18,7 @@ model User {
   drafts        ContentDraft[]
   logs          AuditLog[]
   automations   Automation[]
+  apiSettings   ApiSettings?
 }
 
 model BrandProfile {
@@ -107,4 +108,17 @@ model Automation {
   status          String   @default("ACTIVE")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model ApiSettings {
+  id                String   @id @default(uuid())
+  user_id           String   @unique
+  user              User     @relation(fields: [user_id], references: [id])
+  gemini_api_key    String?  @db.Text
+  linkedin_access_token String? @db.Text
+  linkedin_client_id    String?
+  linkedin_client_secret String?
+  linkedin_organization_id String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
