@@ -149,8 +149,23 @@ export default function DashboardPage() {
                     )}
                   </div>
                 </div>
-                <div>
-                  <button className="text-sm text-blue-600 font-medium hover:underline">Edit</button>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={async () => {
+                      const toastId = toast.loading("Running automation manually...");
+                      try {
+                        const res = await fetch(`/api/cron/auto-post?id=${auto.id}`, { method: "POST" });
+                        if (!res.ok) throw new Error("Failed to run");
+                        toast.success("Automation ran successfully!", { id: toastId });
+                      } catch (error) {
+                        toast.error("Failed to run automation", { id: toastId });
+                      }
+                    }}
+                    className="flex items-center gap-1 text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded-md font-medium hover:bg-blue-200 transition-colors"
+                  >
+                    Run Now
+                  </button>
+                  <button className="text-sm text-gray-500 font-medium hover:text-gray-900 transition-colors">Edit</button>
                 </div>
               </div>
             ))}
@@ -206,6 +221,8 @@ export default function DashboardPage() {
                     value={schedule}
                     onChange={(e) => setSchedule(e.target.value)}
                   >
+                    <option value="Every 5 Minutes">Every 5 Minutes</option>
+                    <option value="Hourly">Hourly</option>
                     <option value="Daily">Daily</option>
                     <option value="Weekly">Weekly</option>
                     <option value="Bi-Weekly">Bi-Weekly</option>

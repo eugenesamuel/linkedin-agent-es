@@ -106,6 +106,7 @@ model Automation {
   webhook_url     String?
   api_key         String?
   status          String   @default("ACTIVE")
+  lastRunAt       DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
