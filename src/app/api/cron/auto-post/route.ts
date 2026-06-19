@@ -1,6 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// How often each schedule frequency should fire, in milliseconds.
+// Keys must match the <option value> strings in the dashboard Schedule dropdown.
+const SCHEDULE_INTERVALS_MS: Record<string, number> = {
+  "Every 5 Minutes": 5 * 60 * 1000,
+  Hourly: 60 * 60 * 1000,
+  Daily: 24 * 60 * 60 * 1000,
+  Weekly: 7 * 24 * 60 * 60 * 1000,
+  "Bi-Weekly": 14 * 24 * 60 * 60 * 1000,
+};
+
+// An automation is due when it has never run, or when at least its schedule
+// interval has elapsed since the last run. Unknown schedules default to Daily.
+function isDue(schedule: string, lastRunAt: Date | null, now: Date): boolean {
+  if (!lastRunAt) return true;
+  const interval = SCHEDULE_INTERVALS_MS[schedule] ?? SCHEDULE_INTERVALS_MS.Daily;
+  return now.getTime() - lastRunAt.getTime() >= interval;
+}
+
 export async function POST(req: Request) {
   return await handleRun(req);
 }
@@ -16,11 +34,13 @@ async function handleRun(req: Request) {
 
     let automations = [];
     if (id) {
+      // "Run Now" — fire immediately, ignoring the schedule.
       automations = await prisma.automation.findMany({ where: { id, status: "ACTIVE" } });
     } else {
-      // Find all active automations
-      automations = await prisma.automation.findMany({ where: { status: "ACTIVE" } });
-      // In a real cron, we would filter by lastRunAt and schedule frequency
+      // Scheduled cron run — only fire automations whose frequency is due.
+      const now = new Date();
+      const active = await prisma.automation.findMany({ where: { status: "ACTIVE" } });
+      automations = active.filter((a) => isDue(a.schedule, a.lastRunAt, now));
     }
 
     if (automations.length === 0) {
